@@ -1,12 +1,19 @@
-from pwaqi import AirQuality
+import requests
+import os
 
-API_KEY = "f36faaec08a2cdf58fe85cc986510752f8e1b45d"
+API_KEY = os.getenv("f36faaec08a2cdf58fe85cc986510752f8e1b45d")  # ты через Railway ENV задашь
 
 def get_aqi(city: str):
-    aqi = AirQuality(api_key=API_KEY)
-    result = aqi.city(city)
+    url = f"https://api.waqi.info/feed/{city}/?token={API_KEY}"
 
-    if not result or "data" not in result:
+    try:
+        r = requests.get(url, timeout=10)
+        data = r.json()
+
+        if data.get("status") != "ok":
+            return None
+
+        return data["data"]["aqi"]
+
+    except Exception:
         return None
-
-    return result["data"]["aqi"]
