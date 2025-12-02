@@ -1,71 +1,71 @@
-from aiogram import Router, types
-from aiogram.filters import Command
-from keyboards import main_menu_kb, back_kb, history_kb, advice_kb
-from aqi_service import get_aqi, get_history, get_advice
+from aiogram import types
+from aiogram.dispatcher import Dispatcher
+from aiogram.dispatcher.filters import Text
+from keyboards import main_kb, aqi_inline_kb
+import requests
+import os
 
-router = Router()
+API_TOKEN = os.getenv("AQI_API_KEY")  # ключ API AQI
 
-# /start
-@router.message(Command("start"))
-async def cmd_start(msg: types.Message):
-    await msg.answer(
-        "Выбери действие:",
-        reply_markup=main_menu_kb()
-    )
+# Функция для советов по уровню AQI
+def get_advice(aqi):
+    if aqi <= 50:
+        return "AQI низкий — воздух чистый, можно спокойно гулять на улице."
+    elif aqi <= 100:
+        return "AQI умеренный — можно гулять, но чувствительные люди должны быть осторожны."
+    elif aqi <= 150:
+        return "AQI вреден для чувствительных групп — избегайте долгих прогулок на улице."
+    elif aqi <= 200:
+        return "AQI плохой — ограничьте физическую активность на улице, носите маску."
+    elif aqi <= 300:
+        return "AQI очень плохой — оставайтесь дома, используйте очистители воздуха."
+    else:
+        return "AQI опасный — максимально избегайте выхода на улицу, закройте окна и используйте маску."
 
+# Словарь для хранения последнего AQI на сообщение (временное)
+last_aqi = {}
 
-# Нажал кнопку Узнать AQI
-@router.message(lambda m: m.text == "Узнать AQI")
-async def ask_city(msg: types.Message):
-    await msg.answer("Введи название города:", reply_markup=back_kb())
+async def start(message: types.Message):
+    await message.answer("Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.", reply_markup=main_kb)
 
+async def ask_city(message: types.Message):
+    if message.text == "Узнать AQI":
+        await message.answer("Введите город (пока работает только Темиртау)")
 
-# Пользователь пишет город
-@router.message()
-async def city_handler(msg: types.Message):
-    if msg.text == "Назад":
-        await msg.answer("Главное меню:", reply_markup=main_menu_kb())
+async def get_aqi(message: types.Message):
+    city_ru = message.text.strip()
+
+    if city_ru.lower() != "темиртау":
+        await message.answer("Я пока умею показывать AQI только для города Темиртау.")
         return
 
-    city = msg.text.strip()
-    aqi = get_aqi(city)
+    city_en = "Temirtau"
+    url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
+    response = requests.get(url).json()
+    
+    if response.get("status") == "ok":
+        aqi = response["data"]["aqi"]
+        last_aqi[message.message_id] = aqi  # сохраняем для callback
+        await message.answer(f"📍 Город: Темиртау\n🌫 AQI: {aqi}", reply_markup=aqi_inline_kb())
+    else:
+        await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
 
-    if aqi is None:
-        await msg.answer("Не смог найти город или API недоступен 😕")
-        return
+async def callback_inline(callback_query: types.CallbackQuery):
+    data = callback_query.data
+    msg_id = callback_query.message.message_id
+    aqi = last_aqi.get(msg_id, None)
 
-    await msg.answer(
-        f"🌎 Город: <b>{city}</b>\n"
-        f"🌫 AQI: <b>{aqi}</b>",
-        reply_markup=history_kb(city)
-    )
+    if data == "advice" and aqi is not None:
+        text = get_advice(aqi)
+        await callback_query.message.answer(text)
+    elif data == "history":
+        text = "История ваших запросов AQI:\n(пока не подключена база данных)"
+        await callback_query.message.answer(text)
 
+    await callback_query.answer()
 
-# Кнопка “Советы”
-@router.callback_query(lambda c: c.data.startswith("advice:"))
-async def send_advice(cb: types.CallbackQuery):
-    _, aqi = cb.data.split(":")
-    aqi = int(aqi)
-
-    tips = get_advice(aqi)
-
-    await cb.message.answer(
-        f"Советы при AQI {aqi}:\n\n{tips}",
-        reply_markup=back_kb()
-    )
-    await cb.answer()
-
-
-# Кнопка “История”
-@router.callback_query(lambda c: c.data.startswith("history:"))
-async def send_history(cb: types.CallbackQuery):
-    _, city = cb.data.split(":")
-    history = get_history(city)
-
-    text = f"📊 История AQI за 3 дня в <b>{city}</b>:\n\n"
-    for day, val in history.items():
-        text += f"• {day}: <b>{val}</b>\n"
-
-    await cb.message.answer(text, reply_markup=back_kb())
-    await cb.answer()
-
+def register_handlers(dp: Dispatcher):
+    dp.register_message_handler(start, commands=["start"])
+    dp.register_message_handler(ask_city, Text(equals="Узнать AQI"))
+    dp.register_message_handler(get_aqi)
+    dp.register_callback_query_handler(callback_inline)
