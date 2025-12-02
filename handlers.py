@@ -4,7 +4,7 @@ from keyboards import main_kb, aqi_inline_kb
 import requests
 import os
 
-API_TOKEN = os.getenv("AQI_API_KEY")
+API_TOKEN = os.getenv("AQI_TOKEN")
 router = Router()
 
 # Советы по AQI
