@@ -2,13 +2,14 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 
 # Кнопка "Узнать AQI"
 main_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton("Узнать AQI")]],
+    keyboard=[[KeyboardButton(text="Узнать AQI")]],
     resize_keyboard=True
 )
 
 # Инлайн кнопки под сообщением AQI
 def aqi_inline_kb():
-    kb = InlineKeyboardMarkup()
-    kb.add(InlineKeyboardButton("Советы", callback_data="advice"))
-    kb.add(InlineKeyboardButton("История", callback_data="history"))
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Советы", callback_data="advice")],
+        [InlineKeyboardButton(text="История", callback_data="history")]
+    ])
     return kb
