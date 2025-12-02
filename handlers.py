@@ -35,6 +35,9 @@ async def show_aqi(message: types.Message):
     city_en = "Temirtau"
     url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
     response = requests.get(url).json()
+    
+    # Печатаем весь ответ в консоль для дебага
+    print("API response:", response)
 
     if response.get("status") == "ok":
         aqi = response["data"]["aqi"]
@@ -44,6 +47,7 @@ async def show_aqi(message: types.Message):
         )
     else:
         await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
+
 
 @router.callback_query(F.data == "advice")
 async def callback_advice(callback_query: types.CallbackQuery):
