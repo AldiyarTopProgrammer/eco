@@ -1,4 +1,5 @@
-from aiogram import types, Router
+from aiogram import types, Router, F
+from aiogram.filters import Command
 from keyboards import main_kb, aqi_inline_kb
 import requests
 import os
@@ -6,7 +7,7 @@ import os
 API_TOKEN = os.getenv("AQI_API_KEY")
 router = Router()
 
-# Функция для советов по уровню AQI
+# Советы по AQI
 def get_advice(aqi):
     if aqi <= 50:
         return "AQI низкий — воздух чистый, можно спокойно гулять на улице."
@@ -23,15 +24,20 @@ def get_advice(aqi):
 
 last_aqi = {}
 
-# Хэндлеры
-@router.message(commands=["start"])
+# Хэндлер /start
+@router.message(Command(commands=["start"]))
 async def start(message: types.Message):
-    await message.answer("Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.", reply_markup=main_kb)
+    await message.answer(
+        "Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.",
+        reply_markup=main_kb
+    )
 
-@router.message(lambda m: m.text == "Узнать AQI")
+# Кнопка "Узнать AQI"
+@router.message(F.text == "Узнать AQI")
 async def ask_city(message: types.Message):
     await message.answer("Введите город (пока работает только Темиртау)")
 
+# Ввод города
 @router.message()
 async def get_aqi(message: types.Message):
     city_ru = message.text.strip()
@@ -47,10 +53,14 @@ async def get_aqi(message: types.Message):
     if response.get("status") == "ok":
         aqi = response["data"]["aqi"]
         last_aqi[message.message_id] = aqi
-        await message.answer(f"📍 Город: Темиртау\n🌫 AQI: {aqi}", reply_markup=aqi_inline_kb())
+        await message.answer(
+            f"📍 Город: Темиртау\n🌫 AQI: {aqi}",
+            reply_markup=aqi_inline_kb()
+        )
     else:
         await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
 
+# Callback-кнопки
 @router.callback_query()
 async def callback_inline(callback_query: types.CallbackQuery):
     data = callback_query.data
@@ -61,10 +71,9 @@ async def callback_inline(callback_query: types.CallbackQuery):
         text = get_advice(aqi)
         await callback_query.message.answer(text)
     elif data == "history":
-        text = "История ваших запросов AQI:\n(пока не подключена база данных)"
-        await callback_query.message.answer(text)
+        await callback_query.message.answer("История ваших запросов AQI:\n(пока не подключена база данных)")
 
     await callback_query.answer()
 
-def register_handlers(dp: Dispatcher):
+def register_handlers(dp: Router):
     dp.include_router(router)
