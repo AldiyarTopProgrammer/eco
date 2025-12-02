@@ -9,7 +9,6 @@ main_kb = ReplyKeyboardMarkup(
 # Инлайн кнопки под сообщением AQI
 def aqi_inline_kb():
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Советы", callback_data="advice")],
-        [InlineKeyboardButton(text="История", callback_data="history")]
+        [InlineKeyboardButton(text="Советы", callback_data="advice")]
     ])
     return kb
