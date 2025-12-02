@@ -5,7 +5,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import BotCommand
 from handlers import router
 
-TOKEN = os.getenv("8520976464:AAEXRuPMQjznxFX2vAmbI1hrFBwB8Scr0aY")
+TOKEN = os.getenv("BOT_TOKEN")
 
 async def main():
     bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
