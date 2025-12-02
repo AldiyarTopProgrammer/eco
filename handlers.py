@@ -1,42 +1,71 @@
 from aiogram import Router, types
-from aqi_service import get_aqi
-from tips import get_tip
-from config import DEFAULT_CITY
+from aiogram.filters import Command
+from keyboards import main_menu_kb, back_kb, history_kb, advice_kb
+from aqi_service import get_aqi, get_history, get_advice
 
 router = Router()
 
-@router.message(commands=["start"])
-async def start_cmd(msg: types.Message):
+# /start
+@router.message(Command("start"))
+async def cmd_start(msg: types.Message):
     await msg.answer(
-        "Привет! Я показываю AQI, советы и скажу, когда лучше не выходить.\n"
-        "Команды:\n"
-        "/aqi <город> — качество воздуха\n"
-        "/tip — экосовет\n"
-        f"Пример: /aqi {DEFAULT_CITY}"
+        "Выбери действие:",
+        reply_markup=main_menu_kb()
     )
 
-@router.message(commands=["tip"])
-async def send_tip(msg: types.Message):
-    await msg.answer(f"Совет: {get_tip()}")
 
-@router.message(commands=["aqi"])
-async def aqi_cmd(msg: types.Message):
-    parts = msg.text.split(maxsplit=1)
-    city = parts[1] if len(parts) > 1 else DEFAULT_CITY
+# Нажал кнопку Узнать AQI
+@router.message(lambda m: m.text == "Узнать AQI")
+async def ask_city(msg: types.Message):
+    await msg.answer("Введи название города:", reply_markup=back_kb())
 
-    data = get_aqi(city)
 
-    if not data:
-        await msg.answer("Не смог найти воздух для этого города.")
+# Пользователь пишет город
+@router.message()
+async def city_handler(msg: types.Message):
+    if msg.text == "Назад":
+        await msg.answer("Главное меню:", reply_markup=main_menu_kb())
         return
 
-    text = (
-        f"🌍 Город: {city}\n"
-        f"📊 AQI: {data['aqi']}\n"
-        f"PM2.5: {data['pm25']}\n"
-        f"PM10: {data['pm10']}\n\n"
-        f"{data['status']}\n\n"
-        f"♻️ Совет: {get_tip()}"
+    city = msg.text.strip()
+    aqi = get_aqi(city)
+
+    if aqi is None:
+        await msg.answer("Не смог найти город или API недоступен 😕")
+        return
+
+    await msg.answer(
+        f"🌎 Город: <b>{city}</b>\n"
+        f"🌫 AQI: <b>{aqi}</b>",
+        reply_markup=history_kb(city)
     )
 
-    await msg.answer(text)
+
+# Кнопка “Советы”
+@router.callback_query(lambda c: c.data.startswith("advice:"))
+async def send_advice(cb: types.CallbackQuery):
+    _, aqi = cb.data.split(":")
+    aqi = int(aqi)
+
+    tips = get_advice(aqi)
+
+    await cb.message.answer(
+        f"Советы при AQI {aqi}:\n\n{tips}",
+        reply_markup=back_kb()
+    )
+    await cb.answer()
+
+
+# Кнопка “История”
+@router.callback_query(lambda c: c.data.startswith("history:"))
+async def send_history(cb: types.CallbackQuery):
+    _, city = cb.data.split(":")
+    history = get_history(city)
+
+    text = f"📊 История AQI за 3 дня в <b>{city}</b>:\n\n"
+    for day, val in history.items():
+        text += f"• {day}: <b>{val}</b>\n"
+
+    await cb.message.answer(text, reply_markup=back_kb())
+    await cb.answer()
+
