@@ -2,7 +2,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-API_KEY = os.getenv("f36faaec08a2cdf58fe85cc986510752f8e1b45d")
+API_KEY = os.getenv("AQI_TOKEN")
 
 # ---------- Получение текущего AQI ----------
 def get_aqi(city: str):
