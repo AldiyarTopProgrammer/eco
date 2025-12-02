@@ -22,32 +22,23 @@ def get_advice(aqi):
     else:
         return "AQI опасный — максимально избегайте выхода на улицу, закройте окна и используйте маску."
 
+# Темиртау координаты
+LAT = 50.068
+LON = 72.958
+
 last_aqi = {}
 
-# Хэндлер /start
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message):
     await message.answer(
-        "Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.",
+        "Привет! Я бот по AQI для Темиртау. Нажми кнопку ниже, чтобы узнать качество воздуха.",
         reply_markup=main_kb
     )
 
 # Кнопка "Узнать AQI"
 @router.message(F.text == "Узнать AQI")
-async def ask_city(message: types.Message):
-    await message.answer("Введите город (пока работает только Темиртау)")
-
-# Ввод города
-@router.message()
-async def get_aqi(message: types.Message):
-    city_ru = message.text.strip()
-
-    if city_ru.lower() != "темиртау":
-        await message.answer("Я пока умею показывать AQI только для города Темиртау.")
-        return
-
-    city_en = "Temirtau"
-    url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
+async def show_aqi(message: types.Message):
+    url = f"https://api.waqi.info/feed/geo:{LAT};{LON}/?token={API_TOKEN}"
     response = requests.get(url).json()
 
     if response.get("status") == "ok":
@@ -60,7 +51,6 @@ async def get_aqi(message: types.Message):
     else:
         await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
 
-# Callback-кнопки
 @router.callback_query()
 async def callback_inline(callback_query: types.CallbackQuery):
     data = callback_query.data
