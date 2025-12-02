@@ -33,7 +33,7 @@ async def start(message: types.Message):
 @router.message(F.text == "Узнать AQI")
 async def show_aqi(message: types.Message):
     city_en = "Temirtau"
-    url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
+    url = "https://api.waqi.info/feed/A517666/?token=f36faaec08a2cdf58fe85cc986510752f8e1b45d"
     response = requests.get(url).json()
     
     # Печатаем весь ответ в консоль для дебага
