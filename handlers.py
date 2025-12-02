@@ -22,47 +22,53 @@ def get_advice(aqi):
     else:
         return "AQI опасный — максимально избегайте выхода на улицу, закройте окна и используйте маску."
 
-# Темиртау координаты
-LAT = 50.068
-LON = 72.958
-
-last_aqi = {}
+# Словарь для русского -> английский
+ru_to_en = {
+    "темиртау": "Temirtau"
+}
 
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message):
     await message.answer(
-        "Привет! Я бот по AQI для Темиртау. Нажми кнопку ниже, чтобы узнать качество воздуха.",
+        "Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.",
         reply_markup=main_kb
     )
 
-# Кнопка "Узнать AQI"
 @router.message(F.text == "Узнать AQI")
-async def show_aqi(message: types.Message):
-    url = f"https://api.waqi.info/feed/geo:{LAT};{LON}/?token={API_TOKEN}"
+async def ask_city(message: types.Message):
+    await message.answer("Введите город (на русском, например: Темиртау)")
+
+@router.message()
+async def get_aqi(message: types.Message):
+    city_ru = message.text.strip().lower()
+
+    city_en = ru_to_en.get(city_ru)
+    if not city_en:
+        await message.answer("Я умею показывать AQI только для Темиртау.")
+        return
+
+    url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
     response = requests.get(url).json()
 
     if response.get("status") == "ok":
         aqi = response["data"]["aqi"]
-        last_aqi[message.message_id] = aqi
         await message.answer(
-            f"📍 Город: Темиртау\n🌫 AQI: {aqi}",
+            f"📍 Город: {city_ru.title()}\n🌫 AQI: {aqi}",
             reply_markup=aqi_inline_kb()
         )
     else:
         await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
 
-@router.callback_query()
-async def callback_inline(callback_query: types.CallbackQuery):
-    data = callback_query.data
-    msg_id = callback_query.message.message_id
-    aqi = last_aqi.get(msg_id, None)
+@router.callback_query(F.data == "advice")
+async def callback_advice(callback_query: types.CallbackQuery):
+    text = callback_query.message.text
+    try:
+        aqi = int(text.split("AQI: ")[1])
+    except:
+        await callback_query.answer("Не могу определить AQI для советов.")
+        return
 
-    if data == "advice" and aqi is not None:
-        text = get_advice(aqi)
-        await callback_query.message.answer(text)
-    elif data == "history":
-        await callback_query.message.answer("История ваших запросов AQI:\n(пока не подключена база данных)")
-
+    await callback_query.message.answer(get_advice(aqi))
     await callback_query.answer()
 
 def register_handlers(dp: Router):
