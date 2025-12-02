@@ -1,11 +1,10 @@
-from aiogram import types
-from aiogram.dispatcher import Dispatcher
-from aiogram.dispatcher.filters import Text
+from aiogram import types, Router
 from keyboards import main_kb, aqi_inline_kb
 import requests
 import os
 
-API_TOKEN = os.getenv("AQI_API_KEY")  # ключ API AQI
+API_TOKEN = os.getenv("AQI_API_KEY")
+router = Router()
 
 # Функция для советов по уровню AQI
 def get_advice(aqi):
@@ -22,16 +21,18 @@ def get_advice(aqi):
     else:
         return "AQI опасный — максимально избегайте выхода на улицу, закройте окна и используйте маску."
 
-# Словарь для хранения последнего AQI на сообщение (временное)
 last_aqi = {}
 
+# Хэндлеры
+@router.message(commands=["start"])
 async def start(message: types.Message):
     await message.answer("Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.", reply_markup=main_kb)
 
+@router.message(lambda m: m.text == "Узнать AQI")
 async def ask_city(message: types.Message):
-    if message.text == "Узнать AQI":
-        await message.answer("Введите город (пока работает только Темиртау)")
+    await message.answer("Введите город (пока работает только Темиртау)")
 
+@router.message()
 async def get_aqi(message: types.Message):
     city_ru = message.text.strip()
 
@@ -42,14 +43,15 @@ async def get_aqi(message: types.Message):
     city_en = "Temirtau"
     url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
     response = requests.get(url).json()
-    
+
     if response.get("status") == "ok":
         aqi = response["data"]["aqi"]
-        last_aqi[message.message_id] = aqi  # сохраняем для callback
+        last_aqi[message.message_id] = aqi
         await message.answer(f"📍 Город: Темиртау\n🌫 AQI: {aqi}", reply_markup=aqi_inline_kb())
     else:
         await message.answer("Не удалось получить данные AQI. Попробуйте позже.")
 
+@router.callback_query()
 async def callback_inline(callback_query: types.CallbackQuery):
     data = callback_query.data
     msg_id = callback_query.message.message_id
@@ -65,7 +67,4 @@ async def callback_inline(callback_query: types.CallbackQuery):
     await callback_query.answer()
 
 def register_handlers(dp: Dispatcher):
-    dp.register_message_handler(start, commands=["start"])
-    dp.register_message_handler(ask_city, Text(equals="Узнать AQI"))
-    dp.register_message_handler(get_aqi)
-    dp.register_callback_query_handler(callback_inline)
+    dp.include_router(router)
