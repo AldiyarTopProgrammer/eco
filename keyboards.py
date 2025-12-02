@@ -1,34 +1,14 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-def main_menu_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Узнать AQI")],
-        ],
-        resize_keyboard=True
-    )
+# Кнопка "Узнать AQI"
+main_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton("Узнать AQI")]],
+    resize_keyboard=True
+)
 
-def back_kb():
-    return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Назад")]],
-        resize_keyboard=True
-    )
-
-def history_kb(city: str):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="Советы", callback_data=f"advice:{city}_unused")
-            ],
-            [
-                InlineKeyboardButton(text="История AQI", callback_data=f"history:{city}")
-            ]
-        ]
-    )
-
-def advice_kb(aqi: int):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Советы", callback_data=f"advice:{aqi}")]
-        ]
-    )
+# Инлайн кнопки под сообщением AQI
+def aqi_inline_kb():
+    kb = InlineKeyboardMarkup()
+    kb.add(InlineKeyboardButton("Советы", callback_data="advice"))
+    kb.add(InlineKeyboardButton("История", callback_data="history"))
+    return kb
