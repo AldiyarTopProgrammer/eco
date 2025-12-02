@@ -22,38 +22,24 @@ def get_advice(aqi):
     else:
         return "AQI опасный — максимально избегайте выхода на улицу, закройте окна и используйте маску."
 
-# Словарь для русского -> английский
-ru_to_en = {
-    "темиртау": "Temirtau"
-}
-
 @router.message(Command(commands=["start"]))
 async def start(message: types.Message):
     await message.answer(
-        "Привет! Я бот по AQI. Нажми кнопку ниже, чтобы узнать качество воздуха.",
+        "Привет! Я бот по AQI для Темиртау. Нажми кнопку ниже, чтобы узнать качество воздуха.",
         reply_markup=main_kb
     )
 
+# Кнопка "Узнать AQI"
 @router.message(F.text == "Узнать AQI")
-async def ask_city(message: types.Message):
-    await message.answer("Введите город (на русском, например: Темиртау)")
-
-@router.message()
-async def get_aqi(message: types.Message):
-    city_ru = message.text.strip().lower()
-
-    city_en = ru_to_en.get(city_ru)
-    if not city_en:
-        await message.answer("Я умею показывать AQI только для Темиртау.")
-        return
-
+async def show_aqi(message: types.Message):
+    city_en = "Temirtau"
     url = f"https://api.waqi.info/feed/{city_en}/?token={API_TOKEN}"
     response = requests.get(url).json()
 
     if response.get("status") == "ok":
         aqi = response["data"]["aqi"]
         await message.answer(
-            f"📍 Город: {city_ru.title()}\n🌫 AQI: {aqi}",
+            f"📍 Город: Темиртау\n🌫 AQI: {aqi}",
             reply_markup=aqi_inline_kb()
         )
     else:
